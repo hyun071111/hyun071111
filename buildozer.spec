@@ -1,5 +1,3 @@
-%%writefile buildozer.spec
-
 [app]
 
 # 애플리케이션 이름
