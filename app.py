@@ -1,13 +1,11 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
-import tensorflow as tf
-import tensorflow_hub as hub
 import cv2
+import threading
 import pyttsx3
 import numpy as np
-import threading
-
+import tensorflow as tf
+import tensorflow_hub as hub
+from queue import Queue
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
@@ -27,7 +25,6 @@ class ObjectDetectionApp(App):
         self.main_box = BoxLayout(orientation='vertical', padding=10)
 
         self.image_view = Image(size_hint=(1, 0.6))
-
         self.toggle_button = Button(text='시작', on_press=self.toggle_detection, size_hint=(1, None), height=40)
         self.switch_camera_button = Button(text='카메라 전환', on_press=self.switch_camera, size_hint=(1, None), height=40)
         self.explain_button = Button(text='설명', on_press=self.describe_objects_button, disabled=True, size_hint=(1, None), height=40)
@@ -40,10 +37,8 @@ class ObjectDetectionApp(App):
 
         self.toggle_button.background_normal = ''
         self.toggle_button.background_color = (0, 0.5, 0.8, 1)
-
         self.switch_camera_button.background_normal = ''
         self.switch_camera_button.background_color = (0, 0.5, 0.8, 1)
-
         self.explain_button.background_normal = ''
         self.explain_button.background_color = (0, 0.5, 0.8, 1)
 
@@ -55,41 +50,31 @@ class ObjectDetectionApp(App):
 
         self.cap = cv2.VideoCapture(0)
         self.camera_index = 0
-
         self.running = False
         self.frame = None
         self.detections = None
         self.labels = None
-
-        self.model = self.load_model()  # 여기에서 모델 초기화
-        self.label_names = self.load_label_names()  # 라벨 이름 로드
+        self.model = self.load_model()
+        self.label_names = self.load_label_names()
+        self.frame_queue = Queue(maxsize=1)
 
         return self.main_box
 
     def load_model(self):
-        # TensorFlow Hub에서 모델을 다운로드하고 로컬에 저장
-        model_url = "https://tfhub.dev/tensorflow/ssd_mobilenet_v2/2"
-        model_path = "ssd_mobilenet_v2"  # 모델을 저장할 경로
-
+        model_url = "https://tfhub.dev/tensorflow/efficientdet/d0/1"
+        model_path = "efficientdet_d0"
         if not os.path.exists(model_path):
-            print("모델을 다운로드하는 중...")
             model = hub.load(model_url)
             tf.saved_model.save(model, model_path)
-        else:
-            print("모델이 이미 다운로드되었습니다.")
-
         return tf.saved_model.load(model_path)
 
     def load_label_names(self):
-        # COCO 데이터셋 라벨 이름을 로드하고 반환
         return [
-            '배경', '사람', '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트', '신호등', '소화전', '정지 신호', 
-            '주차 요금기', '벤치', '새', '고양이', '개', '말', '양', '코끼리', '곰', '얼룩말', '기린', '배낭', '우산', '핸드백', 
-            '넥타이', '여행가방', '프리스비', '스키', '스노보드', '스포츠 볼', '연', '야구 방망이', '야구 글러브', '스케이트보드', 
-            '서핑보드', '테니스 라켓', '병', '와인잔', '컵', '포크', '나이프', '숟가락', '그릇', '바나나', '사과', '샌드위치', 
-            '오렌지', '브로콜리', '당근', '핫도그', '피자', '도넛', '케이크', '의자', '소파', '화분', '침대', '식탁', '화장실', 
-            'TV', '노트북', '마우스', '리모컨', '키보드', '휴대폰', '전자레인지', '오븐', '토스터', '싱크대', '냉장고', '책', 
-            '시계', '꽃병', '가위', '테디 베어', '헤어 드라이어', '칫솔'
+            '배경', '사람', '자전거', '차', '오토바이', '버스', '트럭', '보트', 
+            '신호등', '소화전', '정지 표지판', '주차 계량기', '벤치', '개', '고양이',
+            '쓰레기통', '버스 정류장', '간판', '가로등', '건물', '휴대폰', '노트북', 
+            '책', '컵', '가방', '키보드', '마우스', '리모컨', '헤드폰', '시계', '안경', 
+            '의자', '테이블', '텔레비전'
         ]
 
     def toggle_detection(self, instance):
@@ -104,7 +89,7 @@ class ObjectDetectionApp(App):
         self.toggle_button.text = "멈춤"
         self.explain_button.disabled = False
         self.info_label.text = '객체를 감지하려면 "설명" 버튼을 누르세요.'
-        Clock.schedule_interval(self.update_gui, 1.0 / 60.0)
+        Clock.schedule_interval(self.update_gui, 1.0 / 30.0)
 
     def stop_detection(self):
         self.running = False
@@ -121,25 +106,20 @@ class ObjectDetectionApp(App):
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
-                print("카메라에서 프레임 캡처 실패. 종료합니다...")
                 break
-
-            self.frame = frame.copy()
-            self.detections = self.detect_objects(frame, self.model)
-            self.labels = self.get_detected_labels(self.detections)
-
+            frame_resized = cv2.resize(frame, (320, 240))
+            self.frame_queue.put(frame_resized)
         self.cap.release()
 
     def detect_objects(self, frame, model):
-        input_tensor = tf.convert_to_tensor(frame)
+        frame_resized = cv2.resize(frame, (512, 512))
+        input_tensor = tf.convert_to_tensor(frame_resized, dtype=tf.uint8)
         input_tensor = input_tensor[tf.newaxis, ...]
-
         infer = model.signatures['serving_default']
-        detections = infer(tf.constant(input_tensor))
-
+        detections = infer(input_tensor)
         return detections
 
-    def get_detected_labels(self, detections, confidence_threshold=0.5):
+    def get_detected_labels(self, detections, confidence_threshold=0.3):
         labels = []
         for i in range(len(detections['detection_boxes'][0])):
             class_id = int(detections['detection_classes'][0][i])
@@ -153,12 +133,11 @@ class ObjectDetectionApp(App):
 
     def describe_objects(self, labels):
         if not labels:
-            self.info_label.text = "객체를 감지하지 못했습니다."
-            self.speak("객체를 감지하지 못했습니다.")
+            self.info_label.text = "감지된 객체 없음."
+            self.speak("감지된 객체가 없습니다.")
             return
-
         objects = [self.label_names[label] for label in labels if label < len(self.label_names)]
-        description = ", ".join(objects) + "이 있습니다."
+        description = ", ".join(objects) + "을(를) 감지했습니다."
         self.info_label.text = description
         self.speak(description)
 
@@ -168,22 +147,30 @@ class ObjectDetectionApp(App):
 
     def update_gui(self, dt):
         if self.running:
-            if self.frame is not None and self.detections is not None and self.labels is not None:
-                self.display_frame(self.frame, self.detections, self.labels)
+            if not self.frame_queue.empty():
+                frame = self.frame_queue.get()
+                detections = self.detect_objects(frame, self.model)
+                labels = self.get_detected_labels(detections)
+                self.labels = labels
+                self.display_frame(frame, detections, labels)
 
     def display_frame(self, frame, detections, labels):
         display_frame = frame.copy()
         if not labels:
-            cv2.putText(display_frame, "객체를 감지하지 못했습니다.", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(display_frame, "감지된 객체 없음.", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2, cv2.LINE_AA)
         else:
             for i in range(len(labels)):
                 class_id = labels[i]
-                if class_id < len(self.label_names):  # 범위 확인
+                if class_id < len(self.label_names):
                     score = detections['detection_scores'][0][i]
                     label = self.label_names[class_id]
+                    box = detections['detection_boxes'][0][i]
+                    height, width, _ = display_frame.shape
+                    ymin, xmin, ymax, xmax = box
+                    ymin, xmin, ymax, xmax = int(ymin * height), int(xmin * width), int(ymax * height), int(xmax * width)
+                    cv2.rectangle(display_frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
                     text = f"{label}: {score:.2f}"
-                    cv2.putText(display_frame, text, (50, 50 + i * 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2, cv2.LINE_AA)
-
+                    cv2.putText(display_frame, text, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2, cv2.LINE_AA)
         frame_rgb = cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb, (640, 480))
         image_texture = self.texture_from_frame(frame_resized)
@@ -195,8 +182,5 @@ class ObjectDetectionApp(App):
         texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
         return texture
 
-def main():
-    return ObjectDetectionApp()
-
 if __name__ == '__main__':
-    main().run()
+    ObjectDetectionApp().run()
