@@ -37,4 +37,4 @@
 
 <hr />
 
-<img src="https://github.com/hyun071111/hyun071111/blob/output/github-contribution-grid-snake.svg"/>
+<img src="https://github.com/hyun071111/hyun071111/blob/output/github-contribution-grid-snake-dark.svg"/>
