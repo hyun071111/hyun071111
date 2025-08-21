@@ -1,7 +1,7 @@
 ## 📊 GitHub Stats
 
 ![GitHub Stats](https://github-readme-stats.vercel.app/api?username=hyun071111&show_icons=true&theme=radical)
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=hyun071111&layout=compact&theme=radical&hide=html,css,mdx)
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=hyun071111&layout=compact&theme=radical&hide=html,htm,css,mdx)
 
 <hr />
 
