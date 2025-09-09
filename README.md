@@ -1,6 +1,7 @@
 ## 📊 GitHub Stats
 
 ![GitHub Stats](https://github-readme-stats.vercel.app/api?username=hyun071111&show_icons=true&theme=radical)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=hyun071111&layout=compact&theme=radical&hide=html,htm,css,mdx,md)
 
 <hr />
