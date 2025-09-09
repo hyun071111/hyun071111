@@ -1,7 +1,6 @@
 ## 📊 GitHub Stats
 
 ![GitHub Stats](https://github-readme-stats.vercel.app/api?username=hyun071111&show_icons=true&theme=radical)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=hyun071111&layout=compact&theme=radical&hide=html,htm,css,mdx,md)
 
 <hr />
@@ -9,6 +8,7 @@
 ### 💻 Skills & Languages
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 
 ### 🌐 Frameworks
